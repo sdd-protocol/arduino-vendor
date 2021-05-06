@@ -10,9 +10,9 @@ class SDDPDisplayInterface
 {
 public:
   // mgmt methods
-  virtual void listening() = 0;
+  virtual void listening() {};
   virtual void consumerEstablished(String consumerId, String onChannel) = 0;
-  virtual void consumerRejected(String consumerId, String onChannel, String reason) = 0;
+  virtual void consumerRejected(String consumerId, String onChannel, String reason) {};
 
   typedef enum {
     Left,

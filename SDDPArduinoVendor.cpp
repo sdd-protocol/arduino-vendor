@@ -9,7 +9,6 @@ SDDPDisplay::RedisConnection SDDPDisplay::newConnection()
 
   if (!conn->connect(config.redisHost, config.redisPort))
   {
-      Serial.println("Failed to connect to the Redis server!");
       return retVal;
   }
 
@@ -17,10 +16,6 @@ SDDPDisplay::RedisConnection SDDPDisplay::newConnection()
   if (config.redisAuth && redis->authenticate(config.redisAuth) == RedisSuccess)
   {
       retVal = { .client = conn, .redis = redis };
-  }
-  else
-  {
-      Serial.printf("Failed to authenticate to the Redis server!\n");
   }
 
   return retVal;
@@ -81,8 +76,7 @@ void SDDPDisplay::messageCallback(Redis *redisInst, String channel, String msg)
 
               delegate->consumerEstablished(consumerId, establishedChannel);
             } else {
-              /// hmm what to do here!?
-              Serial.println("FAILED TO SUB TO ESTAB CHAN");
+              // TODO: handle this
             }
           }
           
@@ -173,7 +167,7 @@ SDDPDisplay::Returns SDDPDisplay::startVending(void)
       ((SDDPDisplay*)redisInst->getTestContext())->messageCallback(redisInst, channel, msg);
     },
     [=](Redis *redisInst, RedisMessageError err) {
-      Serial.printf("Subscription error! '%d'\n", err);
+      // TODO: handle this
     }
   );
 
