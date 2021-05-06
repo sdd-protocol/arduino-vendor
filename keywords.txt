@@ -1,0 +1,13 @@
+SDDPDisplayInterface    KEYWORD1
+SDDPDisplay             KEYWORD1
+startVending            KEYWORD2
+listening               KEYWORD2
+consumerEstablished     KEYWORD2
+consumerRejected        KEYWORD2
+clear                   KEYWORD2
+home                    KEYWORD2
+writeAt                 KEYWORD2
+toggleDisplay           KEYWORD2
+toggleCursor            KEYWORD2
+toggleCursorBlink       KEYWORD2
+scrollDisplay           KEYWORD2
