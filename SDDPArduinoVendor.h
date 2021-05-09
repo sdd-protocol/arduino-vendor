@@ -31,6 +31,9 @@ public:
   virtual void scrollDisplay(ScrollDir direction) = 0;
 };
 
+// TODO: need a "release" or "disconnect" *in the protocol*, and must unsubscribe to establishedChan
+// and setup again for a new connection... it works *implicitly* right now, but that's not great!
+
 class SDDPDisplay
 {
 public:

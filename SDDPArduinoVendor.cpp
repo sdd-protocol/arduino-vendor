@@ -56,31 +56,25 @@ void SDDPDisplay::messageCallback(Redis *redisInst, String channel, String msg)
       // <fromId> request <displayName> <protocolVersion>
       if (command == "request" && comps[2].value == config.displayName) {
         // exclusive?
-        auto publishConn = newConnection();
+        auto goodProtoVer = comps.size() == 4 && String(PROTOCOL_VERSION) == comps[3].value;
 
-        if (publishConn.redis) {
-          auto goodProtoVer = comps.size() == 4 && String(PROTOCOL_VERSION) == comps[3].value;
+        if (!goodProtoVer) {
+          publishConn.redis->publish((config.channelPrefix + "ctrl-init:request:resp").c_str(),
+            (config.displayName + " " + "reject " + fromId + " bad_protocol_version").c_str());
+          delegate->consumerRejected(fromId, establishedChannel, "bad_protocol_version");
+        }
+        else {
+          establishedChannel = config.channelPrefix + "estab:" + config.displayName + "|" + fromId;
+          consumerId = fromId;
 
-          if (!goodProtoVer) {
-            publishConn.redis->publish((config.channelPrefix + "ctrl-init:request:resp").c_str(),
-              (config.displayName + " " + "reject " + fromId + " bad_protocol_version").c_str());
-            delegate->consumerRejected(fromId, establishedChannel, "bad_protocol_version");
-          }
-          else {
-            if (redisInst->subscribe(establishedChannel.c_str())) {
-              publishConn.redis->publish((config.channelPrefix + "ctrl-init:request:resp").c_str(),
-                (config.displayName + " " + "ok " + fromId).c_str());
+          delegate->consumerEstablished(consumerId, establishedChannel);
 
-              establishedChannel = config.channelPrefix + "estab:" + config.displayName + "|" + fromId;
-              consumerId = fromId;
-
-              delegate->consumerEstablished(consumerId, establishedChannel);
-            } else {
-              // TODO: handle this
-            }
-          }
-          
-          releaseConnection(publishConn);
+          // have to get out of the loop ASAP after these two calls (really the last one is the key, 
+          // as the consumer will likely *immediately* issue commands on establishedChan, so we need
+          // to be done with work and listening for those messages again ASAP)
+          redisInst->subscribe(establishedChannel.c_str()); // TODO: check return val?
+          publishConn.redis->publish((config.channelPrefix + "ctrl-init:request:resp").c_str(),
+            (config.displayName + " " + "ok " + fromId).c_str());
         }
       }
     }
