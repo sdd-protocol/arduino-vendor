@@ -1,7 +1,11 @@
 #ifndef SDDPDisplay_h
 #define SDDPDisplay_h
 
-#define PROTOCOL_VERSION "3"
+#include <map>
+
+#define PROTOCOL_VERSION "4"
+
+#define DEFAULT_CONSUMER_TIMEOUT_SECONDS  15
 
 class Client;
 class Redis;
@@ -13,6 +17,7 @@ public:
   virtual void listening() {};
   virtual void consumerEstablished(String consumerId, String onChannel) = 0;
   virtual void consumerRejected(String consumerId, String onChannel, String reason) {};
+  virtual void consumerDisconnected(String consumerId) {};
 
   typedef enum {
     Left,
@@ -39,6 +44,8 @@ class SDDPDisplay
 public:
   typedef Client* (*CreateClientFunc)(void);
 
+  typedef String (*CustomCommandHandlerFunc)(std::vector<String> arguments);
+
   typedef struct {
     String displayName;
     String channelPrefix;
@@ -46,6 +53,7 @@ public:
     uint16_t redisPort;
     const char* redisAuth;
     CreateClientFunc clientCreator;
+    uint32_t consumerTimeout; // set to 0 to default to DEFAULT_CONSUMER_TIMEOUT_SECONDS
   } Config;
 
   typedef enum {
@@ -57,13 +65,15 @@ public:
   } Returns;
 
   SDDPDisplay(Config config, SDDPDisplayInterface *delegate) : 
-    config(config), delegate(delegate) {}
+    config(config), delegate(delegate), consumerId(""), establishedChannel(""), lastMsgMillis(-1) {}
 
   ~SDDPDisplay() {}
   SDDPDisplay(const SDDPDisplay &) = delete;
   SDDPDisplay &operator=(const SDDPDisplay &) = delete;
   SDDPDisplay(const SDDPDisplay &&) = delete;
   SDDPDisplay &operator=(const SDDPDisplay &&) = delete;
+
+  bool registerCustomCommand(String command, CustomCommandHandlerFunc handler);
 
   // blocks forever unless error
   Returns startVending(void);
@@ -80,15 +90,22 @@ private:
     Redis* redis;
   } RedisConnection;
 
+  typedef std::map<String, CustomCommandHandlerFunc> RegisteredCommandMap;
+
   Config config;
   SDDPDisplayInterface *delegate;
   String consumerId;
   String establishedChannel;
+  unsigned long lastMsgMillis;
+  
   RedisConnection publishConn;
+
+  RegisteredCommandMap registeredCustomCommands;
 
   RedisConnection newConnection();
   void releaseConnection(RedisConnection conn);
   void messageCallback(Redis *, String, String);
+  void establishedMessageCallback(Redis *, String, String, std::vector<CommandToken>&);
 };
 
 #endif
