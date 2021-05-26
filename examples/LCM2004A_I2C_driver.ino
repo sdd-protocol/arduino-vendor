@@ -27,6 +27,21 @@ SDDPDisplay *display;
 
 bool subscriberLoop(std::function<void(void)> resetBackoffCounter);
 
+unsigned long startTimestamp;
+unsigned rollover = 0;
+
+String uptimeCommandHandler(std::vector<String> args) 
+{
+  auto now = millis();
+
+  if (now < startTimestamp) {
+    rollover++;
+    startTimestamp = 0;
+  }
+
+  return (String((millis() - startTimestamp) / 1000) + ":" + String(rollover));
+}
+
 void setup()
 {
     Serial.begin(115200);
@@ -36,7 +51,7 @@ void setup()
 
     auto rawDisplay = displayInterface.rawDisplay(); 
 
-    if (!display) {
+    if (!rawDisplay) {
       Serial.println("Display failed to initialize! Nothing doing, halting here.");
       return;
     }
@@ -44,7 +59,7 @@ void setup()
     Serial.println("Display initialized");
 
     rawDisplay->setCursor(0, 0);
-    rawDisplay->print("Connecting to SSID:");
+    rawDisplay->print("Connecting to SSID");
     rawDisplay->setCursor(2, 1);
     rawDisplay->print(WIFI_SSID);
 
@@ -72,11 +87,13 @@ void setup()
     rawDisplay->setCursor(15, 0);
     rawDisplay->print("<" VERSION "." PROTOCOL_VERSION ">");
     rawDisplay->setCursor(0, 0);
-    rawDisplay->print("Connected as:");
+    rawDisplay->print("Connected as");
     rawDisplay->setCursor(2, 1);
-    rawDisplay->print(HOSTNAME);
+    rawDisplay->print("\"" HOSTNAME "\"");
+    rawDisplay->setCursor(0, 2);
+    rawDisplay->print("Pfx> " CHANNEL_PREFIX);
     rawDisplay->setCursor(0, 3);
-    rawDisplay->print("IP: " + WiFi.localIP().toString());
+    rawDisplay->print("IP>  " + WiFi.localIP().toString());
 
     display = new SDDPDisplay(SDDPDisplay::Config{
       .displayName = String(HOSTNAME),
@@ -86,6 +103,9 @@ void setup()
       .redisAuth = REDIS_PASSWORD,
       .clientCreator = []() -> Client* { return new WiFiClient(); }
     }, &displayInterface);
+
+    startTimestamp = millis();
+    display->registerCustomCommand("uptime", uptimeCommandHandler);
 
     auto backoffCounter = -1;
     auto resetBackoffCounter = [&]() { backoffCounter = 0; };
